@@ -7,30 +7,17 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Descargar autobuild oficial más reciente
+      - name: Descargar autobuild oficial (v29.09.2026)
         run: |
           New-Item -ItemType Directory -Force -Path C:\bld | Out-Null
           Set-Location C:\bld
           
-          # Obtener la primera publicación disponible (incluyendo pre-releases)
-          $releases = Invoke-RestMethod -Uri "https://github.com"
-          $asset = $releases[0].assets | Where-Object { $_.name -match "\.(zip|7z)$" } | Select-Object -First 1
+          Write-Host "Descargando autobuild.zip..."
+          curl.exe -f -L -o autobuild.zip "https://github.com"
+          if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar autobuild.zip"; exit 1 }
           
-          if (-not $asset) {
-            Write-Error "No se encontro ningun archivo descargable en Releases."
-            exit 1
-          }
-
-          Write-Host "Descargando: $($asset.browser_download_url)"
-          curl.exe -f -L -o "$($asset.name)" "$($asset.browser_download_url)"
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-
-          if ($asset.name -like "*.zip") {
-            Expand-Archive -Path "$($asset.name)" -DestinationPath "C:\bld" -Force
-          } else {
-            7z x "$($asset.name)" -o"C:\bld" -y
-          }
-          Remove-Item "$($asset.name)"
+          Expand-Archive -Path "autobuild.zip" -DestinationPath "C:\bld" -Force
+          Remove-Item "autobuild.zip"
         shell: pwsh
 
       - name: Descargar dependencias base (MinNT y old-src)
