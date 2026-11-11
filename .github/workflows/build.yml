@@ -15,7 +15,7 @@ jobs:
         with:
           arch: x64
 
-      - name: Preparar carpeta C:\bld y código fuente
+      - name: Preparar C:\bld y descargar MinNT / old-src
         run: |
           New-Item -ItemType Directory -Force -Path C:\bld | Out-Null
           New-Item -ItemType Directory -Force -Path C:\src | Out-Null
@@ -23,6 +23,25 @@ jobs:
           
           $autobuildDir = Get-ChildItem -Path "C:\src" -Recurse -Directory -Filter "autobuild" | Select-Object -First 1
           Copy-Item -Path "$($autobuildDir.FullName)\*" -Destination "C:\bld" -Recurse -Force
+          
+          Set-Location C:\bld
+          $ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+          $ref = "https://malwarewatch.org"
+
+          Write-Host "Descargando MinNT..."
+          curl.exe -s -f -L -A "$ua" -e "$ref" -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://malwarewatch.orgMinNT-20170416.zip"
+          
+          Write-Host "Descargando old-src..."
+          curl.exe -s -f -L -A "$ua" -e "$ref" -o "old-src.trunk.r687.20150728.7z" "https://malwarewatch.orgold-src.trunk.r687.20150728.7z"
+
+          # Comprobar que ambos archivos pesan mas de 10 MB (no son paginas de error)
+          $minNtSize = (Get-Item "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip").Length
+          $oldSrcSize = (Get-Item "old-src.trunk.r687.20150728.7z").Length
+          Write-Host "Tamano MinNT: $minNtSize bytes | Tamano old-src: $oldSrcSize bytes"
+          if ($minNtSize -lt 10000000 -or $oldSrcSize -lt 10000000) {
+            Write-Error "Uno de los archivos descargados es demasiado pequeno (bloqueo del servidor)."
+            exit 1
+          }
         shell: pwsh
 
       - name: Compilar NTVDMx64 (CCPU Release)
@@ -31,8 +50,7 @@ jobs:
           $ntvdmPatchDir = (Get-ChildItem -Path "C:\src" -Recurse -Directory -Filter "ntvdmpatch" | Select-Object -First 1).FullName
           Write-Host "Usando SRCDIR = $ntvdmPatchDir"
           
-          # Dejar que el script oficial use dwnl.exe para bajar todas las dependencias reales
-          cmd /c "set SRCDIR=$ntvdmPatchDir && (echo. & echo. & echo.) | autobuild-ccpu-fre.cmd > C:\bld\build.log 2>&1"
+          cmd /c "set SRCDIR=$ntvdmPatchDir && (echo. & echo. & echo. & echo. & echo.) | autobuild-ccpu-fre.cmd > C:\bld\build.log 2>&1"
           
           Write-Host "=== ULTIMAS 40 LINEAS DEL LOG DE COMPILACION ==="
           Get-Content C:\bld\build.log | Where-Object { $_ -notmatch "byte\(s\) downloaded\)" } | Select-Object -Last 40
