@@ -7,12 +7,23 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Descargar código fuente
-        uses: actions/checkout@v4
-
-      - name: Ejecutar Autobuild (MINNT)
+      - name: Preparar entorno de compilación
         run: |
-          cd ntvdmpatch\autobuild
+          New-Item -ItemType Directory -Force -Path C:\bld
+          Set-Location C:\bld
+          
+          # Descargar el último paquete oficial de autobuild desde Releases
+          Invoke-WebRequest -Uri "https://github.com" -OutFile "autobuild.zip"
+          Expand-Archive -Path "autobuild.zip" -DestinationPath "C:\bld" -Force
+
+          # Descargar las dependencias base requeridas (MinNT y old-src)
+          Invoke-WebRequest -Uri "https://archive.org" -OutFile "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip"
+          Invoke-WebRequest -Uri "https://archive.org" -OutFile "old-src.trunk.r687.20150728.7z"
+        shell: pwsh
+
+      - name: Compilar NTVDMx64 (CCPU Release)
+        run: |
+          Set-Location C:\bld
           cmd /c autobuild-ccpu-fre.cmd
         shell: pwsh
 
@@ -20,4 +31,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NTVDMx64-Compilado
-          path: ntvdmpatch/autobuild/release/
+          path: C:\bld\releases\
