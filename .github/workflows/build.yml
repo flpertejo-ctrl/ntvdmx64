@@ -10,42 +10,38 @@ jobs:
       - name: Obtener código del repositorio
         uses: actions/checkout@v4
 
+      - name: Activar compilador MSVC (Visual Studio)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Preparar carpeta C:\bld
         run: |
           New-Item -ItemType Directory -Force -Path C:\bld | Out-Null
           $autobuildDir = Get-ChildItem -Path . -Recurse -Directory -Filter "autobuild" | Select-Object -First 1
-          if (-not $autobuildDir) {
-            Write-Host "Estructura de carpetas encontrada:"
-            Get-ChildItem -Path . -Recurse -Depth 2
-            Write-Error "No se encontro la carpeta autobuild en el repositorio."
-            exit 1
-          }
-          Write-Host "Copiando archivos desde: $($autobuildDir.FullName)"
           Copy-Item -Path "$($autobuildDir.FullName)\*" -Destination "C:\bld" -Recurse -Force
         shell: pwsh
 
       - name: Descargar dependencias base (MinNT y old-src)
         run: |
           Set-Location C:\bld
-          
-          Write-Host "Descargando MinNT..."
           curl.exe -f -L -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://archive.org"
-          if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar MinNT"; exit 1 }
-
-          Write-Host "Descargando old-src..."
           curl.exe -f -L -o "old-src.trunk.r687.20150728.7z" "https://archive.org"
-          if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar old-src"; exit 1 }
         shell: pwsh
 
       - name: Compilar NTVDMx64 (CCPU Release)
         run: |
           Set-Location C:\bld
-          Get-ChildItem
-          cmd /c autobuild-ccpu-fre.cmd
+          cmd /c "echo. | autobuild-ccpu-fre.cmd"
+          Write-Host "=== ARCHIVOS GENERADOS EN C:\bld ==="
+          Get-ChildItem -Path C:\bld -Recurse -Depth 2
         shell: pwsh
 
       - name: Empaquetar resultado
         uses: actions/upload-artifact@v4
         with:
           name: NTVDMx64-Compilado
-          path: C:\bld\releases\
+          path: |
+            C:\bld\**\*.zip
+            C:\bld\releases\**
+            !C:\bld\MinNT-*.zip
