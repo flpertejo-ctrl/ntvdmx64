@@ -15,26 +15,31 @@ jobs:
         with:
           arch: x64
 
-      - name: Preparar carpeta C:\bld
+      - name: Preparar carpeta C:\bld y descargar dependencias
         run: |
           New-Item -ItemType Directory -Force -Path C:\bld | Out-Null
           $autobuildDir = Get-ChildItem -Path . -Recurse -Directory -Filter "autobuild" | Select-Object -First 1
           Copy-Item -Path "$($autobuildDir.FullName)\*" -Destination "C:\bld" -Recurse -Force
-        shell: pwsh
-
-      - name: Descargar dependencias base (MinNT y old-src)
-        run: |
+          
           Set-Location C:\bld
-          curl.exe -f -L -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://archive.org"
-          curl.exe -f -L -o "old-src.trunk.r687.20150728.7z" "https://archive.org"
+          Write-Host "Descargando GRMWDK_EN_7600_1.ISO..."
+          curl.exe -s -f -L -o "GRMWDK_EN_7600_1.ISO" "https://download.microsoft.com/download/4/A/2/4A25C7D5-EFBE-4182-B6A9-AE6850409A78/GRMWDK_EN_7600_1.ISO"
+          
+          Write-Host "Descargando MinNT..."
+          curl.exe -s -f -L -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://archive.org"
+          
+          Write-Host "Descargando old-src..."
+          curl.exe -s -f -L -o "old-src.trunk.r687.20150728.7z" "https://archive.org"
         shell: pwsh
 
       - name: Compilar NTVDMx64 (CCPU Release)
         run: |
           Set-Location C:\bld
-          cmd /c "echo. | autobuild-ccpu-fre.cmd"
-          Write-Host "=== ARCHIVOS GENERADOS EN C:\bld ==="
-          Get-ChildItem -Path C:\bld -Recurse -Depth 2
+          cmd /c "echo. | autobuild-ccpu-fre.cmd > C:\bld\build.log 2>&1"
+          Write-Host "=== ULTIMAS 40 LINEAS DEL LOG DE COMPILACION ==="
+          Get-Content C:\bld\build.log -Tail 40
+          Write-Host "=== CARPETAS Y ZIP GENERADOS ==="
+          Get-ChildItem -Path C:\bld -Recurse -Depth 2 | Where-Object { $_.Name -match "release|ntvdm.*\.zip" }
         shell: pwsh
 
       - name: Empaquetar resultado
@@ -42,6 +47,6 @@ jobs:
         with:
           name: NTVDMx64-Compilado
           path: |
-            C:\bld\**\*.zip
+            C:\bld\build.log
             C:\bld\releases\**
-            !C:\bld\MinNT-*.zip
+            C:\bld\**\*ntvdmx64*.zip
