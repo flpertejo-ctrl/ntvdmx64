@@ -15,7 +15,7 @@ jobs:
         with:
           arch: x64
 
-      - name: Preparar carpeta C:\bld y descargar dependencias reales
+      - name: Preparar carpeta C:\bld y código fuente
         run: |
           New-Item -ItemType Directory -Force -Path C:\bld | Out-Null
           New-Item -ItemType Directory -Force -Path C:\src | Out-Null
@@ -23,21 +23,6 @@ jobs:
           
           $autobuildDir = Get-ChildItem -Path "C:\src" -Recurse -Directory -Filter "autobuild" | Select-Object -First 1
           Copy-Item -Path "$($autobuildDir.FullName)\*" -Destination "C:\bld" -Recurse -Force
-          
-          Set-Location C:\bld
-          Write-Host "Descargando MinNT (33.7 MB)..."
-          curl.exe -s -f -L -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://malwarewatch.org"
-          
-          Write-Host "Descargando old-src (398.5 MB)..."
-          curl.exe -s -f -L -o "old-src.trunk.r687.20150728.7z" "https://malwarewatch.org"
-
-          Write-Host "Descargando GRMWDK_EN_7600_1.ISO (620 MB)..."
-          curl.exe -s -f -L -o "GRMWDK_EN_7600_1.ISO" "https://malwarewatch.org"
-
-          Write-Host "Descargando GRMSDK_EN_DVD.iso (567 MB)..."
-          curl.exe -s -f -L -o "GRMSDK_EN_DVD.iso" "https://malwarewatch.org"
-
-          Get-ChildItem -Path C:\bld
         shell: pwsh
 
       - name: Compilar NTVDMx64 (CCPU Release)
@@ -45,9 +30,12 @@ jobs:
           Set-Location C:\bld
           $ntvdmPatchDir = (Get-ChildItem -Path "C:\src" -Recurse -Directory -Filter "ntvdmpatch" | Select-Object -First 1).FullName
           Write-Host "Usando SRCDIR = $ntvdmPatchDir"
+          
+          # Dejar que el script oficial use dwnl.exe para bajar todas las dependencias reales
           cmd /c "set SRCDIR=$ntvdmPatchDir && (echo. & echo. & echo.) | autobuild-ccpu-fre.cmd > C:\bld\build.log 2>&1"
+          
           Write-Host "=== ULTIMAS 40 LINEAS DEL LOG DE COMPILACION ==="
-          Get-Content C:\bld\build.log -Tail 40 | ForEach-Object { $_ -replace '[^\x20-\x7E]', '' }
+          Get-Content C:\bld\build.log | Where-Object { $_ -notmatch "byte\(s\) downloaded\)" } | Select-Object -Last 40
           Write-Host "=== ARCHIVOS Y CARPETAS GENERADOS EN C:\bld ==="
           Get-ChildItem -Path C:\bld
         shell: pwsh
