@@ -12,15 +12,25 @@ jobs:
           New-Item -ItemType Directory -Force -Path C:\bld | Out-Null
           Set-Location C:\bld
           
-          # Obtener automáticamente la URL del último autobuild desde la API de GitHub
-          $release = Invoke-RestMethod -Uri "https://github.com"
-          $assetUrl = ($release.assets | Where-Object { $_.name -like "*.zip" } | Select-Object -First 1).browser_download_url
-          Write-Host "Descargando: $assetUrl"
+          # Obtener la primera publicación disponible (incluyendo pre-releases)
+          $releases = Invoke-RestMethod -Uri "https://github.com"
+          $asset = $releases[0].assets | Where-Object { $_.name -match "\.(zip|7z)$" } | Select-Object -First 1
           
-          curl.exe -f -L -o autobuild.zip "$assetUrl"
+          if (-not $asset) {
+            Write-Error "No se encontro ningun archivo descargable en Releases."
+            exit 1
+          }
+
+          Write-Host "Descargando: $($asset.browser_download_url)"
+          curl.exe -f -L -o "$($asset.name)" "$($asset.browser_download_url)"
           if ($LASTEXITCODE -ne 0) { exit 1 }
-          Expand-Archive -Path "autobuild.zip" -DestinationPath "C:\bld" -Force
-          Remove-Item "autobuild.zip"
+
+          if ($asset.name -like "*.zip") {
+            Expand-Archive -Path "$($asset.name)" -DestinationPath "C:\bld" -Force
+          } else {
+            7z x "$($asset.name)" -o"C:\bld" -y
+          }
+          Remove-Item "$($asset.name)"
         shell: pwsh
 
       - name: Descargar dependencias base (MinNT y old-src)
