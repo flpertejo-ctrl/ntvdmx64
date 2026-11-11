@@ -23,8 +23,11 @@ jobs:
           
           Set-Location C:\bld
           Write-Host "Descargando GRMWDK_EN_7600_1.ISO..."
-          curl.exe -s -f -L -o "GRMWDK_EN_7600_1.ISO" "https://download.microsoft.com/download/4/A/2/4A25C7D5-EFBE-4182-B6A9-AE6850409A78/GRMWDK_EN_7600_1.ISO"
+          curl.exe -s -f -L -o "GRMWDK_EN_7600_1.ISO" "https://microsoft.com"
           
+          Write-Host "Descargando GRMSDK_EN_DVD.iso..."
+          curl.exe -s -f -L -o "GRMSDK_EN_DVD.iso" "https://download.microsoft.com/download/F/1/0/F10113F5-B750-4969-A255-274341AC6BCE/GRMSDK_EN_DVD.iso"
+
           Write-Host "Descargando MinNT..."
           curl.exe -s -f -L -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://archive.org"
           
@@ -36,10 +39,10 @@ jobs:
         run: |
           Set-Location C:\bld
           cmd /c "echo. | autobuild-ccpu-fre.cmd > C:\bld\build.log 2>&1"
-          Write-Host "=== ULTIMAS 40 LINEAS DEL LOG DE COMPILACION ==="
-          Get-Content C:\bld\build.log -Tail 40
-          Write-Host "=== CARPETAS Y ZIP GENERADOS ==="
-          Get-ChildItem -Path C:\bld -Recurse -Depth 2 | Where-Object { $_.Name -match "release|ntvdm.*\.zip" }
+          Write-Host "=== ULTIMAS 40 LINEAS LIMPIAS ==="
+          Get-Content C:\bld\build.log -Tail 40 | ForEach-Object { $_ -replace '[^\x20-\x7E]', '' }
+          Write-Host "=== ARCHIVOS Y CARPETAS EN C:\bld ==="
+          Get-ChildItem -Path C:\bld
         shell: pwsh
 
       - name: Empaquetar resultado
@@ -47,6 +50,6 @@ jobs:
         with:
           name: NTVDMx64-Compilado
           path: |
-            C:\bld\build.log
             C:\bld\releases\**
             C:\bld\**\*ntvdmx64*.zip
+            C:\bld\**\*ntvdmx64*.7z
