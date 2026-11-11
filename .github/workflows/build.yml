@@ -7,24 +7,21 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Descargar scripts autobuild desde master
+      - name: Obtener código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar carpeta C:\bld
         run: |
           New-Item -ItemType Directory -Force -Path C:\bld | Out-Null
-          New-Item -ItemType Directory -Force -Path C:\tmp_repo | Out-Null
-          Set-Location C:\tmp_repo
-          
-          Write-Host "Descargando repositorio master de leecher1337..."
-          curl.exe -f -L -o master.zip "https://github.com"
-          if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar master.zip"; exit 1 }
-          
-          Expand-Archive -Path "master.zip" -DestinationPath "C:\tmp_repo" -Force
-          
-          # Buscar la carpeta autobuild dentro del codigo descargado y copiar sus archivos a C:\bld
-          $autobuildDir = Get-ChildItem -Path "C:\tmp_repo" -Recurse -Directory -Filter "autobuild" | Select-Object -First 1
-          if (-not $autobuildDir) { Write-Error "No se encontro la carpeta autobuild"; exit 1 }
-          
+          $autobuildDir = Get-ChildItem -Path . -Recurse -Directory -Filter "autobuild" | Select-Object -First 1
+          if (-not $autobuildDir) {
+            Write-Host "Estructura de carpetas encontrada:"
+            Get-ChildItem -Path . -Recurse -Depth 2
+            Write-Error "No se encontro la carpeta autobuild en el repositorio."
+            exit 1
+          }
+          Write-Host "Copiando archivos desde: $($autobuildDir.FullName)"
           Copy-Item -Path "$($autobuildDir.FullName)\*" -Destination "C:\bld" -Recurse -Force
-          Remove-Item -Path "C:\tmp_repo" -Recurse -Force
         shell: pwsh
 
       - name: Descargar dependencias base (MinNT y old-src)
