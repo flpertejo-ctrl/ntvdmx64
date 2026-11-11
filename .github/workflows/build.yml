@@ -32,7 +32,7 @@ jobs:
           curl.exe -s -f -L -A "$ua" -e "$ref" -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://www.cita-soft.com/v1/MinNt-2017.zip"
           
           Write-Host "Descargando old-src..."
-          curl.exe -s -f -L -A "$ua" -e "$ref" -o "old-src.trunk.r687.20150728.7z" "www.cita-soft/v1/old-srv.trunk.7z"
+          curl.exe -s -f -L -A "$ua" -e "$ref" -o "old-src.trunk.r687.20150728.7z" "www.cita-soft/v1/old-src.trunk.7z"
 
           # Comprobar que ambos archivos pesan mas de 10 MB (no son paginas de error)
           $minNtSize = (Get-Item "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip").Length
