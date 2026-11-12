@@ -34,22 +34,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar old-src de la web"; exit 1 }
         shell: pwsh
 
-      - name: Compilar NTVDMx64 (Solo idioma ES)
+      - name: Compilar NTVDMx64 (CCPU Release)
         run: |
           Set-Location C:\bld
           $ntvdmPatchDir = (Get-ChildItem -Path "C:\src" -Recurse -Directory -Filter "ntvdmpatch" | Select-Object -First 1).FullName
           Write-Host "Usando SRCDIR = $ntvdmPatchDir"
-
-          # Optimizar scripts de autobuild para compilar solo espanol (y base en) en lugar de los 30 idiomas
-          Get-ChildItem -Path "C:\bld" -Filter "*.cmd" | ForEach-Object {
-            $contenido = Get-Content $_.FullName -Raw
-            if ($contenido -match "de fr it") {
-              Write-Host "Optimizando idiomas en $($_.Name)..."
-              # Reemplaza listas de multiples idiomas por solo 'en es'
-              $contenido = $contenido -replace "(?m)^(.*\b(?:en|us)\b.*\bde\b.*\bfr\b.*)$", 'set LANGS=en es'
-              Set-Content -Path $_.FullName -Value $contenido -Encoding ascii
-            }
-          }
           
           1..100 | ForEach-Object { "Y" } | Out-File -FilePath C:\bld\keys.txt -Encoding ascii
           
@@ -70,10 +59,17 @@ jobs:
           curl.exe -s -S -f -L -o "wow32.zip" "https://cita-soft.com/v0/ntv/wow32.zip"
           if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar wow32.zip de la web"; exit 1 }
 
-          $paquete = Get-ChildItem -Path "C:\bld" -Recurse -Include "*ntvdmx64*.7z", "*ntvdmx64*.zip" | Select-Object -First 1
+          # Localizar el archivo comprimido generado por autobuild (excluyendo los descargados)
+          $paquete = Get-ChildItem -Path "C:\bld" -Recurse -File | Where-Object {
+            ($_.Extension -eq ".7z" -or $_.Extension -eq ".zip") -and
+            $_.Name -notlike "MinNT*" -and
+            $_.Name -notlike "old-src*" -and
+            $_.Name -ne "dos.zip" -and
+            $_.Name -ne "wow32.zip"
+          } | Sort-Object Length -Descending | Select-Object -First 1
           
           if ($paquete) {
-            Write-Host "Procesando $($paquete.FullName)..."
+            Write-Host "Procesando paquete encontrado: $($paquete.FullName)..."
             New-Item -ItemType Directory -Force -Path "C:\bld\temp_pkg" | Out-Null
             7z x "$($paquete.FullName)" -o"C:\bld\temp_pkg" -y | Out-Null
 
@@ -82,6 +78,7 @@ jobs:
             
             if ($esDir) {
               $parentDir = $esDir.Parent.FullName
+              Write-Host "Eliminando otros idiomas en $parentDir..."
               Get-ChildItem -Path $parentDir -Directory | Where-Object { $_.Name -ne "es" } | Remove-Item -Recurse -Force
               $baseDir = $esDir.FullName
             } else {
@@ -98,12 +95,14 @@ jobs:
             Expand-Archive -Path "C:\bld\dos.zip" -DestinationPath $dosDir -Force
             Expand-Archive -Path "C:\bld\wow32.zip" -DestinationPath $wowDir -Force
 
-            # Reempaquetar solo con lo necesario (compresion rapida -mx=3)
+            # Reempaquetar rapido (-mx=1) para no sobrecargar la CPU al final
             Remove-Item -Path $paquete.FullName -Force
             Set-Location "C:\bld\temp_pkg"
-            7z a -mx=3 "$($paquete.FullName)" * | Out-Null
+            7z a -mx=1 "$($paquete.FullName)" * | Out-Null
           } else {
-            Write-Error "No se encontro el archivo comprimido ntvdmx64 generado por autobuild."
+            Write-Host "Contenido actual de C:\bld tras compilar:"
+            Get-ChildItem -Path "C:\bld" -Recurse | Select-Object FullName
+            Write-Error "No se encontro ningun archivo comprimido generado por autobuild."
             exit 1
           }
         shell: pwsh
