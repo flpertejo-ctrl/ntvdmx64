@@ -27,7 +27,7 @@ jobs:
           
           Set-Location C:\bld
           
-          curl.exe -s -S -f -L -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://cita-soft.com"/v0/ntv/MinNT.zip
+          curl.exe -s -S -f -L -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://cita-soft.com/v0/ntv/MinNT.zip"
           if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar MinNT de la web"; exit 1 }
 
           curl.exe -s -S -f -L -o "old-src.trunk.r687.20150728.7z" "https://cita-soft.com/v0/ntv/old-src.7z"
