@@ -27,10 +27,10 @@ jobs:
           
           Set-Location C:\bld
           
-          curl.exe -s -S -f -L -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://cita-soft.com/v0/ntv/MinNT.zip"
+          curl.exe -s -S -f -L -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "www.//cita-soft.com/v0/ntv/MinNT.zip"
           if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar MinNT de la web"; exit 1 }
 
-          curl.exe -s -S -f -L -o "old-src.trunk.r687.20150728.7z" "https://cita-soft.com/v0/ntv/old-src.7z"
+          curl.exe -s -S -f -L -o "old-src.trunk.r687.20150728.7z" "www.//cita-soft.com/v0/ntv/old-src.7z"
           if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar old-src de la web"; exit 1 }
         shell: pwsh
 
@@ -49,62 +49,45 @@ jobs:
           }
         shell: pwsh
 
-      - name: Filtrar carpeta ES e insertar DOS y WOW32
+      - name: Limpiar idiomas y añadir DOS y WOW32 en ES
         run: |
           Set-Location C:\bld
           
-          curl.exe -s -S -f -L -o "dos.zip" "https://cita-soft.com/v0/ntv/dos.zip"
+          curl.exe -s -S -f -L -o "dos.zip" "www.//cita-soft.com/v0/ntv/dos.zip"
           if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar dos.zip de la web"; exit 1 }
 
-          curl.exe -s -S -f -L -o "wow32.zip" "https://cita-soft.com/v0/ntv/wow32.zip"
+          curl.exe -s -S -f -L -o "wow32.zip" "www.//cita-soft.com/v0/ntv/wow32,zip"
           if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar wow32.zip de la web"; exit 1 }
 
-          # Localizar el archivo comprimido generado por autobuild (excluyendo los descargados)
-          $paquete = Get-ChildItem -Path "C:\bld" -Recurse -File | Where-Object {
-            ($_.Extension -eq ".7z" -or $_.Extension -eq ".zip") -and
-            $_.Name -notlike "MinNT*" -and
-            $_.Name -notlike "old-src*" -and
-            $_.Name -ne "dos.zip" -and
-            $_.Name -ne "wow32.zip"
-          } | Sort-Object Length -Descending | Select-Object -First 1
-          
-          if ($paquete) {
-            Write-Host "Procesando paquete encontrado: $($paquete.FullName)..."
-            New-Item -ItemType Directory -Force -Path "C:\bld\temp_pkg" | Out-Null
-            7z x "$($paquete.FullName)" -o"C:\bld\temp_pkg" -y | Out-Null
+          $esDir = Get-ChildItem -Path "C:\bld\releases" -Recurse -Directory -Filter "es" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $esDir) {
+            $esDir = Get-ChildItem -Path "C:\bld" -Recurse -Directory -Filter "es" | Where-Object { $_.FullName -notlike "C:\src*" } | Select-Object -First 1
+          }
 
-            # Dejar unicamente la carpeta 'es'
-            $esDir = Get-ChildItem -Path "C:\bld\temp_pkg" -Recurse -Directory -Filter "es" | Select-Object -First 1
-            
-            if ($esDir) {
-              $parentDir = $esDir.Parent.FullName
-              Write-Host "Eliminando otros idiomas en $parentDir..."
-              Get-ChildItem -Path $parentDir -Directory | Where-Object { $_.Name -ne "es" } | Remove-Item -Recurse -Force
-              $baseDir = $esDir.FullName
-            } else {
-              $installBat = Get-ChildItem -Path "C:\bld\temp_pkg" -Recurse -Filter "install.bat" | Select-Object -First 1
-              $baseDir = if ($installBat) { $installBat.DirectoryName } else { "C:\bld\temp_pkg" }
-            }
-
-            Write-Host "Insertando DOS y WOW32 en: $baseDir"
-            $dosDir = Join-Path $baseDir "dos"
-            $wowDir = Join-Path $baseDir "wow32"
-            New-Item -ItemType Directory -Force -Path $dosDir | Out-Null
-            New-Item -ItemType Directory -Force -Path $wowDir | Out-Null
-
-            Expand-Archive -Path "C:\bld\dos.zip" -DestinationPath $dosDir -Force
-            Expand-Archive -Path "C:\bld\wow32.zip" -DestinationPath $wowDir -Force
-
-            # Reempaquetar rapido (-mx=1) para no sobrecargar la CPU al final
-            Remove-Item -Path $paquete.FullName -Force
-            Set-Location "C:\bld\temp_pkg"
-            7z a -mx=1 "$($paquete.FullName)" * | Out-Null
-          } else {
-            Write-Host "Contenido actual de C:\bld tras compilar:"
-            Get-ChildItem -Path "C:\bld" -Recurse | Select-Object FullName
-            Write-Error "No se encontro ningun archivo comprimido generado por autobuild."
+          if (-not $esDir) {
+            Write-Error "No se encontro la carpeta 'es' tras la compilacion."
             exit 1
           }
+
+          Write-Host "Carpeta ES encontrada en: $($esDir.FullName)"
+
+          $parentDir = $esDir.Parent.FullName
+          Get-ChildItem -Path $parentDir -Directory | Where-Object { $_.Name -ne "es" } | ForEach-Object {
+            Write-Host "Eliminando idioma sobrante: $($_.Name)"
+            Remove-Item -Path $_.FullName -Recurse -Force
+          }
+
+          $dosDir = Join-Path $esDir.FullName "dos"
+          $wowDir = Join-Path $esDir.FullName "wow32"
+          New-Item -ItemType Directory -Force -Path $dosDir | Out-Null
+          New-Item -ItemType Directory -Force -Path $wowDir | Out-Null
+
+          Expand-Archive -Path "C:\bld\dos.zip" -DestinationPath $dosDir -Force
+          Expand-Archive -Path "C:\bld\wow32.zip" -DestinationPath $wowDir -Force
+
+          New-Item -ItemType Directory -Force -Path "C:\bld\resultado_final\es" | Out-Null
+          Copy-Item -Path "$($esDir.FullName)\*" -Destination "C:\bld\resultado_final\es" -Recurse -Force
+          Write-Host "Estructura final preparada en C:\bld\resultado_final\es"
         shell: pwsh
 
       - name: Empaquetar resultado
@@ -112,7 +95,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NTVDMx64-ES-Compilado
-          path: |
-            C:\bld\releases\**
-            C:\bld\**\*ntvdmx64*.zip
-            C:\bld\**\*ntvdmx64*.7z
+          path: C:\bld\resultado_final\**
