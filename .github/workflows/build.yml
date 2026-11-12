@@ -29,10 +29,10 @@ jobs:
           
           # MANTEN AQUI TUS DOS URLS REALES DE TU WEB:
           curl.exe -s -S -f -L -o "MinNT-20170416-85fac4faadc77203db8ddc66af280a75c1b717b0.zip" "https://cita-soft.com/v0/ntv/MinNT.zip"
-          if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar MinNT de tu web"; exit 1 }
+          if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar MinNT de la web"; exit 1 }
 
           curl.exe -s -S -f -L -o "old-src.trunk.r687.20150728.7z" "https://www.cita-soft.com/v0/ntv/old-src.7z"
-          if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar old-src de tu web"; exit 1 }
+          if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar old-src de la web"; exit 1 }
         shell: pwsh
 
       - name: Compilar NTVDMx64 (CCPU Release)
@@ -50,6 +50,22 @@ jobs:
               Write-Host $_
             }
           }
+        shell: pwsh
+
+      - name: Descargar e insertar DOS y WOW32 en el resultado
+        run: |
+          Set-Location C:\bld
+          
+          curl.exe -s -S -f -L -o "dos.zip" "https://cita-soft.com"
+          if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar dos.zip de la web"; exit 1 }
+
+          curl.exe -s -S -f -L -o "wow32.zip" "https://cita-soft.com"
+          if ($LASTEXITCODE -ne 0) { Write-Error "Fallo al descargar wow32.zip de la web"; exit 1 }
+
+          # Asegurar que existe la carpeta releases y extraer ahi los contenidos
+          New-Item -ItemType Directory -Force -Path "C:\bld\releases" | Out-Null
+          Expand-Archive -Path "C:\bld\dos.zip" -DestinationPath "C:\bld\releases" -Force
+          Expand-Archive -Path "C:\bld\wow32.zip" -DestinationPath "C:\bld\releases" -Force
         shell: pwsh
 
       - name: Empaquetar resultado
